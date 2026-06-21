@@ -58,6 +58,7 @@ async function run() {
 
         const database = client.db("rentify")
         const allProperties = database.collection("properties")
+        const allFavorites = database.collection("favorites")
 
         app.post("/api/properties", async (req, res) => {
             const newProperty = req.body
@@ -81,6 +82,50 @@ async function run() {
 
             const result = await allProperties.findOne({ _id: new ObjectId(id) })
             res.json(result)
+        })
+
+        // ______________________********Favorite********______________
+
+        app.patch("/api/properties/:id/favorite", async (req, res) => {
+            try {
+                const { id } = req.params
+                const { isFavorite } = req.body
+
+                // Update the property document
+                const result = await allProperties.updateOne(
+                    { _id: new ObjectId(id) },
+                    { $set: { isFavorite: isFavorite } }
+                )
+
+                if (result.matchedCount === 0) {
+                    return res.status(404).json({ error: "Property not found" })
+                }
+
+                res.json({
+                    success: true,
+                    message: "Property favorited successfully",
+                    result: result
+                })
+            } catch (error) {
+                console.error("Error updating favorite:", error)
+                res.status(500).json({ error: "Failed to update favorite" })
+            }
+        })
+
+        app.get("/api/properties/favorites/all", async (req, res) => {
+            try {
+                // Find all properties where isFavorite is true
+                const favorites = await allProperties.find({ isFavorite: true }).toArray()
+
+                res.json({
+                    success: true,
+                    count: favorites.length,
+                    data: favorites
+                })
+            } catch (error) {
+                console.error("Error fetching favorites:", error)
+                res.status(500).json({ error: "Failed to fetch favorites" })
+            }
         })
 
         // Send a ping to confirm a successful connection
