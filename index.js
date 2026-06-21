@@ -1,6 +1,8 @@
 const express = require("express")
 const cors = require("cors")
 
+const { createRemoteJWKSet, jwtVerify } = require("jose-cjs")
+
 const app = express()
 require("dotenv").config()
 const port = 5000
@@ -24,6 +26,31 @@ const client = new MongoClient(uri, {
     }
 })
 
+const JWKS = createRemoteJWKSet(new URL(`${process.env.CLIENT_URL}/api/auth/jwks`))
+
+const verifyToken = async (req, res, next) => {
+    const authHeader = req?.headers.authorization
+
+    if (!authHeader) {
+        return res.status(401).json({ message: "Unauthorized" })
+    }
+
+    const token = authHeader?.split(" ")[1]
+
+    if (!token) {
+        return res.status(401).json({ message: "Unauthorized" })
+    }
+
+    try {
+        const { payload } = await jwtVerify(token, JWKS)
+        console.log("Verified Payload:", payload)
+        next()
+    } catch (error) {
+        return res.status(401).json({ message: "Unauthorized" })
+    }
+    console.log(token)
+}
+
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
@@ -38,7 +65,7 @@ async function run() {
             res.json(result)
         })
 
-        app.get("/api/properties", async (req, res) => {
+        app.get("/api/properties", verifyToken, async (req, res) => {
             const properties = await allProperties.find().toArray()
             res.json(properties)
         })
