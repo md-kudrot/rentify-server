@@ -77,7 +77,7 @@ async function run() {
             res.send(result)
         })
 
-        app.get("/api/properties/:id", async (req, res) => {
+        app.get("/api/properties/:id", verifyToken, async (req, res) => {
             const id = req.params.id
 
             const result = await allProperties.findOne({ _id: new ObjectId(id) })
@@ -86,7 +86,7 @@ async function run() {
 
         // ______________________********Favorite********______________
 
-        app.patch("/api/properties/:id/favorite", async (req, res) => {
+        app.patch("/api/properties/:id/favorite", verifyToken, async (req, res) => {
             try {
                 const { id } = req.params
                 const { isFavorite } = req.body
@@ -112,7 +112,7 @@ async function run() {
             }
         })
 
-        app.get("/api/properties/favorites/all", async (req, res) => {
+        app.get("/api/properties/favorites/all", verifyToken, async (req, res) => {
             try {
                 // Find all properties where isFavorite is true
                 const favorites = await allProperties.find({ isFavorite: true }).toArray()
