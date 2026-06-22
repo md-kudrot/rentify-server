@@ -59,6 +59,50 @@ async function run() {
         const database = client.db("rentify")
         const allProperties = database.collection("properties")
         const allFavorites = database.collection("favorites")
+        const allSubscriptions = database.collection("subscriptions")
+        const allUsers = database.collection("users")
+
+        app.post("/api/bookings", async (req, res) => {
+            try {
+                const { sessionId, userId, userEmail, propertyId, title, nights, totalPrice, status, bookedAt } =
+                    req.body
+
+                const bookingsCollection = database.collection("bookings")
+
+                // ✅ duplicate booking check (same session আসলে আবার insert হবে না)
+                const existing = await bookingsCollection.findOne({ sessionId })
+                if (existing) {
+                    return res.json({ message: "Already saved", insertedId: existing._id })
+                }
+
+                const result = await bookingsCollection.insertOne({
+                    sessionId,
+                    userId,
+                    userEmail,
+                    propertyId,
+                    title,
+                    nights,
+                    totalPrice,
+                    status, // "confirmed"
+                    bookedAt: new Date(bookedAt),
+                    createdAt: new Date()
+                })
+
+                res.json(result)
+            } catch (err) {
+                res.status(500).json({ error: err.message })
+            }
+        })
+        // // admin planel thkek user pending ke approve korte hbe/ reject korte hbe
+        // await allSubscriptions.updateOne(
+        //     {_id: new ObjectId("64b8c9e5a1c2f0d9b8e4f1a") },
+        //     { $set: { status: "approved" } }
+        // )
+        // // reject korte hbe
+        // await allSubscriptions.updateOne(
+        //     {_id: new ObjectId("64b8c9e5a1c2f0d9b8e4f1a") },
+        //     { $set: { status: "rejected" } }
+        // )
 
         app.post("/api/properties", async (req, res) => {
             const newProperty = req.body
@@ -127,6 +171,8 @@ async function run() {
                 res.status(500).json({ error: "Failed to fetch favorites" })
             }
         })
+
+        // ______________________********Subscription********______________
 
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 })
