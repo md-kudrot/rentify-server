@@ -62,7 +62,7 @@ async function run() {
         const allSubscriptions = database.collection("subscriptions")
         const allUsers = database.collection("users")
 
-        app.post("/api/bookings", async (req, res) => {
+        app.post("/api/bookings", verifyToken, async (req, res) => {
             try {
                 const {
                     sessionId,
@@ -79,9 +79,13 @@ async function run() {
 
                 const bookingsCollection = database.collection("bookings")
 
-                const existing = await bookingsCollection.findOne({ sessionId })
+                const existing = await bookingsCollection.findOne({
+                    userId,
+                    propertyId,
+                    status: "pending"
+                })
                 if (existing) {
-                    return res.json({ message: "Already saved", insertedId: existing._id })
+                    return res.json({ message: "Already saved" })
                 }
 
                 const result = await bookingsCollection.insertOne({
@@ -103,6 +107,20 @@ async function run() {
                 res.status(500).json({ error: err.message })
             }
         })
+
+        // get all bookings for a specific user by email
+        app.get("/api/bookings/:email", verifyToken, async (req, res) => {
+            try {
+                const email = req.params.email
+                const bookingsCollection = database.collection("bookings")
+
+                const bookings = await bookingsCollection.find({ userEmail: email }).toArray()
+                res.json(bookings)
+            } catch (err) {
+                res.status(500).json({ error: err.message })
+            }
+        })
+
         // // admin planel thkek user pending ke approve korte hbe/ reject korte hbe
         // await allSubscriptions.updateOne(
         //     {_id: new ObjectId("64b8c9e5a1c2f0d9b8e4f1a") },
