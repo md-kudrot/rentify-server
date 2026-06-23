@@ -44,6 +44,7 @@ const verifyToken = async (req, res, next) => {
     try {
         const { payload } = await jwtVerify(token, JWKS)
         console.log("Verified Payload:", payload)
+        req.user = payload
         next()
     } catch (error) {
         return res.status(401).json({ message: "Unauthorized" })
@@ -169,10 +170,18 @@ async function run() {
         //     { $set: { status: "rejected" } }
         // )
 
-        app.post("/api/properties", async (req, res) => {
-            const newProperty = req.body
-            const result = await allProperties.insertOne(newProperty)
-            res.json(result)
+        app.post("/api/properties", verifyToken, async (req, res) => {
+            try {
+                const newProperty = {
+                    ...req.body,
+                    ownerEmail: req.user?.email || req.body.ownerEmail, // JWT থেকে নেওয়া, client-trusted না
+                    createdAt: new Date()
+                }
+                const result = await allProperties.insertOne(newProperty)
+                res.status(201).json({ success: true, insertedId: result.insertedId })
+            } catch (err) {
+                res.status(500).json({ success: false, message: err.message })
+            }
         })
 
         app.get("/api/properties", verifyToken, async (req, res) => {
