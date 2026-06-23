@@ -184,6 +184,52 @@ async function run() {
             }
         })
 
+        // get all properties by owner email
+        app.get("/api/properties/owner/:email", verifyToken, async (req, res) => {
+            try {
+                const { email } = req.params
+                const properties = await allProperties.find({ ownerEmail: email }).toArray()
+                res.json(properties)
+            } catch (err) {
+                res.status(500).json({ success: false, message: err.message })
+            }
+        })
+
+        // patch property by id
+        app.patch("/api/properties/:id", verifyToken, async (req, res) => {
+            try {
+                const { id } = req.params
+                const updateData = req.body
+
+                const result = await allProperties.updateOne({ _id: new ObjectId(id) }, { $set: updateData })
+
+                if (result.matchedCount === 0) {
+                    return res.status(404).json({ error: "Property not found" })
+                }
+
+                res.json({ success: true, message: "Property updated successfully" })
+            } catch (err) {
+                res.status(500).json({ success: false, message: err.message })
+            }
+        })
+
+        // delete property by id
+        app.delete("/api/properties/:id", verifyToken, async (req, res) => {
+            try {
+                const { id } = req.params
+
+                const result = await allProperties.deleteOne({ _id: new ObjectId(id) })
+
+                if (result.deletedCount === 0) {
+                    return res.status(404).json({ error: "Property not found" })
+                }
+
+                res.json({ success: true, message: "Property deleted successfully" })
+            } catch (err) {
+                res.status(500).json({ success: false, message: err.message })
+            }
+        })
+
         app.get("/api/properties", verifyToken, async (req, res) => {
             const properties = await allProperties.find().toArray()
             res.json(properties)
