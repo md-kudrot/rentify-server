@@ -62,6 +62,7 @@ async function run() {
         const allSubscriptions = database.collection("subscriptions")
         const allUsers = database.collection("users")
 
+        // ______________________********Subscription********______________
         app.post("/api/bookings", verifyToken, async (req, res) => {
             try {
                 const {
@@ -116,6 +117,42 @@ async function run() {
 
                 const bookings = await bookingsCollection.find({ userEmail: email }).toArray()
                 res.json(bookings)
+            } catch (err) {
+                res.status(500).json({ error: err.message })
+            }
+        })
+
+        // get all bookings for a specific owner by email
+        app.get("/api/bookings/owner/:email", verifyToken, async (req, res) => {
+            try {
+                const email = req.params.email
+                const bookingsCollection = database.collection("bookings")
+
+                const bookings = await bookingsCollection.find({ ownerEmail: email }).toArray()
+                res.json(bookings)
+            } catch (err) {
+                res.status(500).json({ error: err.message })
+            }
+        })
+
+        // update booking status to approved
+        app.patch("/api/bookings/:id/approve", verifyToken, async (req, res) => {
+            try {
+                const { id } = req.params
+                const { status } = req.body
+
+                const bookingsCollection = database.collection("bookings")
+
+                const result = await bookingsCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    { $set: { status: status } }
+                )
+
+                if (result.matchedCount === 0) {
+                    return res.status(404).json({ error: "Booking not found" })
+                }
+
+                res.json({ success: true, message: "Booking status updated" })
             } catch (err) {
                 res.status(500).json({ error: err.message })
             }
@@ -199,8 +236,6 @@ async function run() {
                 res.status(500).json({ error: "Failed to fetch favorites" })
             }
         })
-
-        // ______________________********Subscription********______________
 
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 })
