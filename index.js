@@ -64,7 +64,61 @@ async function run() {
         const allUsers = database.collection("user")
         const allBookings = database.collection("bookings")
 
-        // get all bokings
+        // Reject property with feedback
+        app.patch("/api/properties/:id/reject", verifyToken, async (req, res) => {
+            try {
+                const { id } = req.params
+                const { feedback, rejectedBy } = req.body
+
+                if (!feedback?.trim()) {
+                    return res.status(400).json({ message: "Feedback is required" })
+                }
+
+                const result = await allProperties.updateOne(
+                    { _id: new ObjectId(id) },
+                    {
+                        $set: {
+                            status: "rejected",
+                            feedback: feedback.trim(),
+                            rejectedBy: rejectedBy || "admin",
+                            rejectedAt: new Date(),
+                            reviewedAt: new Date()
+                        }
+                    }
+                )
+                if (result.matchedCount === 0) return res.status(404).json({ message: "Property not found" })
+                res.json({ success: true, message: "Property rejected" })
+            } catch (err) {
+                res.status(500).json({ error: err.message })
+            }
+        })
+
+        // Approve property
+        app.patch("/api/properties/:id/approve", verifyToken, async (req, res) => {
+            try {
+                const { id } = req.params
+                const result = await allProperties.updateOne(
+                    { _id: new ObjectId(id) },
+                    { $set: { status: "approved", feedback: null, reviewedAt: new Date() } }
+                )
+                if (result.matchedCount === 0) return res.status(404).json({ message: "Property not found" })
+                res.json({ success: true, message: "Property approved" })
+            } catch (err) {
+                res.status(500).json({ error: err.message })
+            }
+        })
+
+        // get all properties
+        app.get("/api/properties", verifyToken, async (req, res) => {
+            try {
+                const properties = await allProperties.find().toArray()
+                res.json(properties)
+            } catch (err) {
+                res.status(500).json({ error: err.message })
+            }
+        })
+
+        // get all bookings
         app.get("/api/bookings", verifyToken, async (req, res) => {
             try {
                 const bookings = await allBookings.find().toArray()
