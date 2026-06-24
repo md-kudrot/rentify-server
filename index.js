@@ -52,6 +52,13 @@ const verifyToken = async (req, res, next) => {
     console.log(token)
 }
 
+const requireAdmin = (req, res, next) => {
+    if (req.user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden: Admins only" })
+    }
+    next()
+}
+
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
@@ -65,7 +72,7 @@ async function run() {
         const allBookings = database.collection("bookings")
 
         // Reject property with feedback
-        app.patch("/api/properties/:id/reject", verifyToken, async (req, res) => {
+        app.patch("/api/properties/:id/reject", verifyToken, requireAdmin, async (req, res) => {
             try {
                 const { id } = req.params
                 const { feedback, rejectedBy } = req.body
@@ -94,7 +101,7 @@ async function run() {
         })
 
         // Approve property
-        app.patch("/api/properties/:id/approve", verifyToken, async (req, res) => {
+        app.patch("/api/properties/:id/approve", verifyToken, requireAdmin, async (req, res) => {
             try {
                 const { id } = req.params
                 const result = await allProperties.updateOne(
@@ -109,7 +116,7 @@ async function run() {
         })
 
         // get all properties
-        app.get("/api/properties", verifyToken, async (req, res) => {
+        app.get("/api/properties", verifyToken, requireAdmin, async (req, res) => {
             try {
                 const page = parseInt(req.query.page) || 1
                 const limit = 10
@@ -138,7 +145,7 @@ async function run() {
         })
 
         // get all bookings
-        app.get("/api/bookings", verifyToken, async (req, res) => {
+        app.get("/api/bookings", verifyToken, requireAdmin, async (req, res) => {
             try {
                 const bookings = await allBookings.find().toArray()
                 res.json(bookings)
@@ -149,7 +156,7 @@ async function run() {
 
         // ______________________********User Management********______________
         // get all users
-        app.get("/api/users", verifyToken, async (req, res) => {
+        app.get("/api/users", verifyToken, requireAdmin, async (req, res) => {
             try {
                 const page = parseInt(req.query.page) || 1 // Default page = 1
                 const limit = 10 // Per page 10 users
@@ -188,7 +195,7 @@ async function run() {
             }
         })
         // update user role to admin
-        app.patch("/api/users/:id/role", verifyToken, async (req, res) => {
+        app.patch("/api/users/:id/role", verifyToken, requireAdmin, async (req, res) => {
             try {
                 const { id } = req.params
                 const { role } = req.body
