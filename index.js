@@ -61,7 +61,35 @@ async function run() {
         const allProperties = database.collection("properties")
         const allFavorites = database.collection("favorites")
         const allSubscriptions = database.collection("subscriptions")
-        const allUsers = database.collection("users")
+        const allUsers = database.collection("user")
+
+        // ______________________********User Management********______________
+        // get all users
+        app.get("/api/users", async (req, res) => {
+            try {
+                const users = await allUsers.find().toArray()
+                res.json(users)
+            } catch (err) {
+                res.status(500).json({ error: err.message })
+            }
+        })
+        // update user role to admin
+        app.patch("/api/users/:id/role", verifyToken, async (req, res) => {
+            try {
+                const { id } = req.params
+                const { role } = req.body
+
+                const result = await allUsers.updateOne({ _id: new ObjectId(id) }, { $set: { role } })
+
+                if (result.matchedCount === 0) {
+                    return res.status(404).json({ message: "User not found" })
+                }
+
+                res.json({ message: "User role updated successfully" })
+            } catch (err) {
+                res.status(500).json({ error: err.message })
+            }
+        })
 
         // ______________________********Subscription********______________
         app.post("/api/bookings", verifyToken, async (req, res) => {
