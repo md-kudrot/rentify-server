@@ -111,8 +111,27 @@ async function run() {
         // get all properties
         app.get("/api/properties", verifyToken, async (req, res) => {
             try {
-                const properties = await allProperties.find().toArray()
-                res.json(properties)
+                const page = parseInt(req.query.page) || 1
+                const limit = 10
+
+                if (page < 1) return res.status(400).json({ error: "Page must be >= 1" })
+
+                const skip = (page - 1) * limit
+                const totalProperties = await allProperties.countDocuments()
+                const properties = await allProperties.find().skip(skip).limit(limit).toArray()
+                const totalPages = Math.ceil(totalProperties / limit)
+
+                res.json({
+                    properties,
+                    pagination: {
+                        currentPage: page,
+                        totalPages,
+                        totalProperties,
+                        limit,
+                        hasNextPage: page < totalPages,
+                        hasPrevPage: page > 1
+                    }
+                })
             } catch (err) {
                 res.status(500).json({ error: err.message })
             }
@@ -353,10 +372,10 @@ async function run() {
             }
         })
 
-        app.get("/api/properties", verifyToken, async (req, res) => {
-            const properties = await allProperties.find().toArray()
-            res.json(properties)
-        })
+        // app.get("/api/properties", verifyToken, async (req, res) => {
+        //     const properties = await allProperties.find().toArray()
+        //     res.json(properties)
+        // })
 
         app.get("/api/properties/latest", async (req, res) => {
             const cursor = allProperties.find().sort({ createdAt: -1 }).limit(6)
