@@ -132,8 +132,38 @@ async function run() {
         // get all users
         app.get("/api/users", verifyToken, async (req, res) => {
             try {
-                const users = await allUsers.find().toArray()
-                res.json(users)
+                const page = parseInt(req.query.page) || 1 // Default page = 1
+                const limit = 10 // Per page 10 users
+
+                // Validation
+                if (page < 1) {
+                    return res.status(400).json({ error: "Page must be >= 1" })
+                }
+
+                // Calculate skip amount
+                const skip = (page - 1) * limit
+
+                // Get total count
+                const totalUsers = await allUsers.countDocuments()
+
+                // Get paginated users
+                const users = await allUsers.find().skip(skip).limit(limit).toArray()
+
+                // Calculate total pages
+                const totalPages = Math.ceil(totalUsers / limit)
+
+                // Response with metadata
+                res.json({
+                    users,
+                    pagination: {
+                        currentPage: page,
+                        totalPages,
+                        totalUsers,
+                        limit,
+                        hasNextPage: page < totalPages,
+                        hasPrevPage: page > 1
+                    }
+                })
             } catch (err) {
                 res.status(500).json({ error: err.message })
             }
