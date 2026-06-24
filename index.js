@@ -71,6 +71,45 @@ async function run() {
         const allUsers = database.collection("user")
         const allBookings = database.collection("bookings")
 
+        // _______________________________________________________
+        app.get("/api/properties/public", async (req, res) => {
+            try {
+                const page = parseInt(req.query.page) || 1
+                const limit = 9
+                const skip = (page - 1) * limit
+
+                // Build filter
+                const filter = { status: "approved" }
+
+                if (req.query.location) {
+                    filter.location = { $regex: req.query.location, $options: "i" }
+                }
+
+                if (req.query.type && req.query.type !== "All") {
+                    filter.propertyType = req.query.type
+                }
+
+                // Build sort
+                let sortOption = { createdAt: -1 } // default: newest
+                if (req.query.sort === "price_asc") sortOption = { price: 1 }
+                if (req.query.sort === "price_desc") sortOption = { price: -1 }
+
+                const total = await allProperties.countDocuments(filter)
+                const properties = await allProperties.find(filter).sort(sortOption).skip(skip).limit(limit).toArray()
+
+                res.json({
+                    properties,
+                    pagination: {
+                        currentPage: page,
+                        totalPages: Math.ceil(total / limit),
+                        total
+                    }
+                })
+            } catch (err) {
+                res.status(500).json({ error: err.message })
+            }
+        })
+
         // Reject property with feedback
         app.patch("/api/properties/:id/reject", verifyToken, requireAdmin, async (req, res) => {
             try {
