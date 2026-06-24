@@ -62,10 +62,21 @@ async function run() {
         const allFavorites = database.collection("favorites")
         const allSubscriptions = database.collection("subscriptions")
         const allUsers = database.collection("user")
+        const allBookings = database.collection("bookings")
+
+        // get all bokings
+        app.get("/api/bookings", verifyToken, async (req, res) => {
+            try {
+                const bookings = await allBookings.find().toArray()
+                res.json(bookings)
+            } catch (err) {
+                res.status(500).json({ error: err.message })
+            }
+        })
 
         // ______________________********User Management********______________
         // get all users
-        app.get("/api/users", async (req, res) => {
+        app.get("/api/users", verifyToken, async (req, res) => {
             try {
                 const users = await allUsers.find().toArray()
                 res.json(users)
