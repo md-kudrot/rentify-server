@@ -70,7 +70,116 @@ async function run() {
         const allSubscriptions = database.collection("subscriptions")
         const allUsers = database.collection("user")
         const allBookings = database.collection("bookings")
-        const allComments = database.collection("comments")
+        const allReviews = database.collection("reviews")
+
+        // Add a review
+        app.post("/api/reviews", verifyToken, async (req, res) => {
+            try {
+                console.log("req.user:", req.user) // এটা add করো
+                console.log("req.body:", req.body) // এটাও
+                const { propertyId, rating, comment } = req.body
+                const { email, name } = req.user
+
+                if (!propertyId || !rating || !comment?.trim()) {
+                    return res.status(400).json({ message: "propertyId, rating, comment required" })
+                }
+
+                // একজন user একটা property তে একটাই review দিতে পারবে
+                const existing = await allReviews.findOne({ propertyId, userEmail: email })
+                if (existing) {
+                    return res.status(409).json({ message: "You have already reviewed this property" })
+                }
+
+                const review = {
+                    propertyId,
+                    userName: name,
+                    userEmail: email,
+                    rating: Number(rating),
+                    comment: comment.trim(),
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                }
+
+                await allReviews.insertOne(review)
+
+                // averageRating + totalReviews recalculate
+                const allPropertyReviews = await allReviews.find({ propertyId }).toArray()
+
+                const totalReviews = allPropertyReviews.length
+                const averageRating = allPropertyReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews
+
+                await allProperties.updateOne(
+                    { _id: new ObjectId(propertyId) },
+                    {
+                        $set: {
+                            "reviews.averageRating": parseFloat(averageRating.toFixed(1)),
+                            "reviews.totalReviews": totalReviews
+                        }
+                    }
+                )
+
+                res.status(201).json({ success: true, message: "Review added" })
+            } catch (err) {
+                res.status(500).json({ error: err.message })
+            }
+        })
+
+        // Get reviews by propertyId
+        app.get("/api/reviews/:propertyId", verifyToken, async (req, res) => {
+            try {
+                const { propertyId } = req.params
+                const reviews = await allReviews.find({ propertyId }).sort({ createdAt: -1 }).toArray()
+
+                res.json({ success: true, reviews })
+            } catch (err) {
+                res.status(500).json({ error: err.message })
+            }
+        })
+
+        // Edit a review
+        app.patch("/api/reviews/:id", verifyToken, async (req, res) => {
+            try {
+                const { id } = req.params
+                const { rating, comment } = req.body
+                const { email } = req.user
+
+                const review = await allReviews.findOne({ _id: new ObjectId(id) })
+
+                if (!review) return res.status(404).json({ message: "Review not found" })
+                if (review.userEmail !== email) return res.status(403).json({ message: "Forbidden" })
+
+                await allReviews.updateOne(
+                    { _id: new ObjectId(id) },
+                    {
+                        $set: {
+                            rating: Number(rating),
+                            comment: comment.trim(),
+                            updatedAt: new Date()
+                        }
+                    }
+                )
+
+                // Recalculate averageRating
+                const allPropertyReviews = await allReviews.find({ propertyId: review.propertyId }).toArray()
+
+                const totalReviews = allPropertyReviews.length
+                const averageRating = allPropertyReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews
+
+                await allProperties.updateOne(
+                    { _id: new ObjectId(review.propertyId) },
+                    {
+                        $set: {
+                            "reviews.averageRating": parseFloat(averageRating.toFixed(1)),
+                            "reviews.totalReviews": totalReviews
+                        }
+                    }
+                )
+
+                res.json({ success: true, message: "Review updated" })
+            } catch (err) {
+                res.status(500).json({ error: err.message })
+            }
+        })
 
         // _______________________________________________________
         app.get("/api/properties/public", verifyToken, async (req, res) => {
