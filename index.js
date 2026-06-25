@@ -587,7 +587,7 @@ async function run() {
         // })
 
         app.get("/api/properties/latest", async (req, res) => {
-            const cursor = allProperties.find().sort({ createdAt: -1 }).limit(6)
+            const cursor = allProperties.find({ status: "approved" }).sort({ createdAt: -1 }).limit(6)
             const result = await cursor.toArray()
             res.send(result)
         })
