@@ -70,9 +70,10 @@ async function run() {
         const allSubscriptions = database.collection("subscriptions")
         const allUsers = database.collection("user")
         const allBookings = database.collection("bookings")
+        const allComments = database.collection("comments")
 
         // _______________________________________________________
-        app.get("/api/properties/public", async (req, res) => {
+        app.get("/api/properties/public", verifyToken, async (req, res) => {
             try {
                 const page = parseInt(req.query.page) || 1
                 const limit = 9
