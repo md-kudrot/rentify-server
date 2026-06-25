@@ -72,6 +72,59 @@ async function run() {
         const allBookings = database.collection("bookings")
         const allReviews = database.collection("reviews")
 
+        // Owner Analytics
+        app.get("/api/analytics/owner/:email", verifyToken, async (req, res) => {
+            try {
+                const { email } = req.params
+
+                // Total Properties
+                const totalProperties = await allProperties.countDocuments({ ownerEmail: email })
+
+                // Owner এর সব bookings
+                const bookings = await allBookings.find({ ownerEmail: email, status: "approved" }).toArray()
+
+                // Total Bookings
+                const totalBookings = bookings.length
+
+                // Total Earnings
+                const totalEarnings = bookings.reduce((sum, b) => sum + (b.totalPrice || 0), 0)
+
+                // Last 12 months earnings
+                const now = new Date()
+                const monthlyMap = {}
+
+                // Last 12 month এর keys তৈরি করো (যাতে data না থাকলেও 0 দেখায়)
+                for (let i = 11; i >= 0; i--) {
+                    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+                    const key = d.toLocaleString("en-US", { month: "short", year: "numeric" })
+                    monthlyMap[key] = 0
+                }
+
+                // Booking থেকে monthly earnings fill করো
+                bookings.forEach((b) => {
+                    const d = new Date(b.bookedAt || b.createdAt)
+                    const key = d.toLocaleString("en-US", { month: "short", year: "numeric" })
+                    if (monthlyMap.hasOwnProperty(key)) {
+                        monthlyMap[key] += b.totalPrice || 0
+                    }
+                })
+
+                const monthlyEarnings = Object.entries(monthlyMap).map(([name, value]) => ({
+                    name: name.split(" ")[0], // "Jun 2026" → "Jun"
+                    value
+                }))
+
+                res.json({
+                    totalEarnings,
+                    totalProperties,
+                    totalBookings,
+                    monthlyEarnings
+                })
+            } catch (err) {
+                res.status(500).json({ error: err.message })
+            }
+        })
+
         // Add a review
         app.post("/api/reviews", verifyToken, async (req, res) => {
             try {
